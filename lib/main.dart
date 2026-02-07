@@ -5,6 +5,8 @@ import 'package:robozido/line_follower.dart';
 import 'package:robozido/manual.dart';
 import 'package:robozido/modes.dart';
 import 'package:robozido/obs_avoider.dart';
+import 'package:robozido/gesture_enabled.dart';
+import 'package:robozido/voice_enabled.dart';
 import 'Rounded_Buttons.dart';
 
 void main() {
@@ -21,6 +23,8 @@ class RoboCellApp extends StatelessWidget {
         Manual.id: (context) => Manual(),
         ObsAvoider.id: (context) => ObsAvoider(),
         LineFollower.id: (context) => LineFollower(),
+        GestureEnabled.id: (context) => GestureEnabled(),
+        VoiceEnabled.id: (context) => VoiceEnabled(),
       },
     );
   }
@@ -63,14 +67,20 @@ class _HomePageState extends State<HomePage> {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Hero(
-                  tag: 'logo',
-                  child: SizedBox(
-                    height: 400,
-                    child: Image.asset('images/logo.png'),
+                CircleAvatar(
+                  radius: 120, // Slightly bigger for space for border
+                  backgroundColor: Colors.transparent, // Border color
+                  child: CircleAvatar(
+                    radius: 110, // Inner circle (actual logo)
+                    backgroundColor: Colors.transparent, // Background inside, optional
+                    backgroundImage: AssetImage('images/logo.png'),
+                    child: Hero(
+                      tag: 'logo',
+                      child: Container(), // Empty because backgroundImage is used
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 100),
                 AnimatedTextKit(
                   animatedTexts: [
                     ColorizeAnimatedText(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,12 +7,13 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'Rounded_Buttons.dart';
 import 'package:flutter/services.dart';
 
-
 class Manual extends StatefulWidget {
   static const String id = "manual";
+
   @override
   State<Manual> createState() => _ManualState();
 }
+
 class _ManualState extends State<Manual> {
   String serverUrl = 'ws://192.168.4.1:81';
   WebSocketChannel? channel;
@@ -19,23 +22,58 @@ class _ManualState extends State<Manual> {
   bool isBackward = false;
   bool isLeft = false;
   bool isRight = false;
+
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft]);
     channel = WebSocketChannel.connect(Uri.parse(serverUrl));
   }
+
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     channel?.sink.close();
     super.dispose();
   }
+
+  bool isRunning = false;
+  bool isRunning1 = false;
+
+  void _toggleStartStop() {
+    setState(() {
+      HapticFeedback.vibrate();
+      isRunning = !isRunning;
+
+      if (isRunning) {
+        sendCommand('ON');
+      } else {
+        sendCommand('OFF');
+      }
+    });
+  }
+
+  void _toggleStartStop1() {
+    setState(() {
+      HapticFeedback.vibrate();
+      isRunning1 = !isRunning1;
+
+      if (isRunning1) {
+        sendCommand('Rotate');
+      } else {
+        sendCommand('ST1');
+      }
+    });
+  }
+
   double servoAngle = 90.0;
   String directionLeft = "None";
   String directionRight = "None";
   Offset _leftJoystickPosition = Offset(0, 0);
   Offset _rightJoystickPosition = Offset(0, 0);
+
   @override
   Widget build(BuildContext context) {
     WidgetsFlutterBinding.ensureInitialized();
@@ -43,24 +81,36 @@ class _ManualState extends State<Manual> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'images/background_image.jpeg',
-            fit: BoxFit.fitWidth,
+          Opacity(
+            opacity: .87, // Set the opacity level (0.0 to 1.0)
+            child: Image.asset(
+              'images/background_image.jpeg',
+              fit: BoxFit.fitWidth,
+            ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: 5,),
+              SizedBox(
+                height: 5,
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _buildTopCard1(
-                    child: Hero(
-                      tag: 'logo',
-                      child: SizedBox(
-                        height: 50,
-                        child: Image.asset('images/logo.png'),
+                    child: IconButton(
+                      icon: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(3.14159),
+                        // Flips the icon horizontally
+                        child: const Icon(
+                          Icons.logout,
+                          color: Colors.yellow,
+                        ),
                       ),
+                      onPressed: () {
+                        _showConfirmationDialog1(context);
+                      },
                     ),
                   ),
                   _buildTopCard(
@@ -77,11 +127,12 @@ class _ManualState extends State<Manual> {
                     ),
                   ),
                   _buildTopCard1(
-                    child: IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.yellow),
-                      onPressed: () {
-                        _showConfirmationDialog1(context);
-                      },
+                    child: Hero(
+                      tag: 'logo',
+                      child: SizedBox(
+                        height: 50,
+                        child: Image.asset('images/appicon2.png'),
+                      ),
                     ),
                   ),
                 ],
@@ -91,14 +142,15 @@ class _ManualState extends State<Manual> {
                   children: [
                     Expanded(
                       child: _buildJoystick(
-                        label: "LEFT JOYSTICK",
+                        label: "",
                         direction: directionLeft,
                         isVertical: true,
                         onDragUpdate: (offset) {
                           setState(() {
                             HapticFeedback.vibrate();
                             _leftJoystickPosition = Offset(0, offset.dy);
-                            directionLeft = _getDirection(_leftJoystickPosition, true);
+                            directionLeft =
+                                _getDirection(_leftJoystickPosition, true);
                             sendCommand(directionLeft);
                           });
                         },
@@ -107,21 +159,22 @@ class _ManualState extends State<Manual> {
                             directionLeft = "None";
                             _leftJoystickPosition = Offset.zero;
                           });
-                          sendCommand('ST');
+                          sendCommand('ST1');
                         },
                       ),
                     ),
                     _buildServoControl(),
                     Expanded(
                       child: _buildJoystick(
-                        label: "RIGHT JOYSTICK",
+                        label: "",
                         direction: directionRight,
                         isVertical: false,
                         onDragUpdate: (offset) {
                           setState(() {
                             HapticFeedback.vibrate();
                             _rightJoystickPosition = Offset(offset.dx, 0);
-                            directionRight = _getDirection(_rightJoystickPosition, false);
+                            directionRight =
+                                _getDirection(_rightJoystickPosition, false);
                             toggleMode(directionRight);
                           });
                         },
@@ -130,7 +183,7 @@ class _ManualState extends State<Manual> {
                             directionRight = "None";
                             _rightJoystickPosition = Offset.zero;
                           });
-                          toggleMode('ST');
+                          toggleMode('ST1');
                         },
                       ),
                     ),
@@ -143,18 +196,14 @@ class _ManualState extends State<Manual> {
       ),
     );
   }
+
   void sendCommand(String command) {
     if (channel != null) {
       channel?.sink.add(command);
-      print('Command sent: $command');
+      //print('Command sent: $command');
     }
   }
-  void sendServoAngle(double angle) {
-    if (channel != null) {
-      channel?.sink.add('Servo:$angle');
-      print('Servo angle set to: $angle');
-    }
-  }
+
   void toggleMode(String selectedMode) {
     setState(() {
       mode = selectedMode;
@@ -165,6 +214,7 @@ class _ManualState extends State<Manual> {
     });
     sendCommand(selectedMode);
   }
+
   void _showConfirmationDialog1(BuildContext context) {
     showDialog(
       context: context,
@@ -240,71 +290,62 @@ class _ManualState extends State<Manual> {
       },
     );
   }
+
   Widget _buildServoControl() {
-    return SizedBox(
-      width: 250,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Card(
-              color: Colors.black54,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 5,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Text(
-                  'Servo Angle: ${servoAngle.toStringAsFixed(0)}°',
-                  style: GoogleFonts.electrolize(
-                    fontSize: 24,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            sendCommand('U');
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.yellow,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
-            SizedBox(height: 20),
-            Card(
-              color: Colors.black87,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 5,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    Text(
-                      "Adjust Servo Angle",
-                      style: GoogleFonts.electrolize(
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Slider(
-                      value: servoAngle,
-                      min: 0,
-                      max: 180,
-                      divisions: 180,
-                      activeColor: Colors.yellow,
-                      inactiveColor: Colors.grey,
-                      onChanged: (value) {
-                        setState(() {
-                          servoAngle = value;
-                          sendServoAngle(servoAngle);
-                        });
-                      },
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ],
+            elevation: 5,
+            minimumSize: const Size(40, 60),
+          ),
+          child: Icon(Icons.keyboard_arrow_up, size: 40, color: Colors.black),
         ),
-      ),
+        const SizedBox(height: 20),
+        Card(
+          color: Colors.black54,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          elevation: 5,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+            child: Text(
+              "Robotic Arm",
+              style: GoogleFonts.electrolize(
+                fontSize: 35.0,
+                color: Colors.yellow,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            sendCommand('D');
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.yellow,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            elevation: 5,
+            minimumSize: const Size(40, 60),
+          ),
+          child: Icon(Icons.keyboard_arrow_down, size: 40, color: Colors.black),
+        ),
+      ],
     );
   }
+
   Widget _buildJoystick({
     required String label,
     required String direction,
@@ -329,7 +370,7 @@ class _ManualState extends State<Manual> {
               height: 200,
               width: 200,
               decoration: BoxDecoration(
-                color: Colors.blue.shade300,
+                color: Colors.black,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
@@ -348,7 +389,7 @@ class _ManualState extends State<Manual> {
               child: Container(
                 width: isVertical ? 20 : null,
                 height: isVertical ? null : 20,
-                color: Colors.blue,
+                color: Colors.grey.shade800,
               ),
             ),
             GestureDetector(
@@ -368,12 +409,12 @@ class _ManualState extends State<Manual> {
                     offset: direction == "None"
                         ? Offset(0, 0)
                         : direction == "Forward"
-                        ? Offset(0, -80)
-                        : direction == "Backward"
-                        ? Offset(0, 80)
-                        : direction == "Left"
-                        ? Offset(-80, 0)
-                        : Offset(80, 0),
+                            ? Offset(0, -80)
+                            : direction == "Backward"
+                                ? Offset(0, 80)
+                                : direction == "Left"
+                                    ? Offset(-80, 0)
+                                    : Offset(80, 0),
                   ),
                 ),
               ),
@@ -383,13 +424,14 @@ class _ManualState extends State<Manual> {
         Text(
           label,
           style: GoogleFonts.electrolize(
-            color: Colors.white,
+            color: Colors.yellow,
             fontSize: 14,
           ),
         ),
       ],
     );
   }
+
   String _getDirection(Offset offset, bool isVertical) {
     if (isVertical) {
       if (offset.dy < -20) {
@@ -406,6 +448,7 @@ class _ManualState extends State<Manual> {
     }
     return "None";
   }
+
   Widget _buildTopCard({required Widget child}) {
     return Card(
       color: Colors.black54,
@@ -417,6 +460,7 @@ class _ManualState extends State<Manual> {
       ),
     );
   }
+
   Widget _buildTopCard1({required Widget child}) {
     return Card(
       color: Colors.black54,
@@ -429,9 +473,12 @@ class _ManualState extends State<Manual> {
     );
   }
 }
+
 class JoystickPainter extends CustomPainter {
   final Offset offset;
+
   JoystickPainter({required this.offset});
+
   @override
   void paint(Canvas canvas, Size size) {
     Paint paint = Paint()
@@ -443,6 +490,7 @@ class JoystickPainter extends CustomPainter {
       paint,
     );
   }
+
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
     return true;

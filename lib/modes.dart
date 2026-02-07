@@ -5,7 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:robozido/manual.dart';
 import 'package:robozido/obs_avoider.dart';
 import 'package:robozido/line_follower.dart';
+import 'package:robozido/gesture_enabled.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:robozido/voice_enabled.dart';
 
 class Modes extends StatefulWidget {
   static const String id = "modes";
@@ -22,15 +26,40 @@ class _ModesState extends State<Modes> {
   bool isLineFollowerModeActive = false;
   bool isObstacleAvoidanceModeActive = false;
   String serverUrl = 'ws://192.168.4.1:81';
+  String ssid = "Connecting...";
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     channel = WebSocketChannel.connect(Uri.parse(serverUrl));
+    // _fetchSSID();
+    // _listenToConnectivityChanges();
   }
+
+  Future<String?> fetchWifiSSID() async {
+    PermissionStatus locationStatus = await Permission.location.request();
+    PermissionStatus wifiStatus = await Permission.nearbyWifiDevices.request();
+
+    if (locationStatus.isGranted && wifiStatus.isGranted) {
+      try {
+        final wifiName = await NetworkInfo().getWifiName();
+        return wifiName ?? "No SSID found";
+      } catch (e) {
+        return "Failed to get SSID: $e";
+      }
+    } else {
+      return "Permissions not granted";
+    }
+  }
+
+  Future<void> _fetchSSID() async {
+    String? fetchedSsid = await fetchWifiSSID();
+    setState(() {
+      ssid = fetchedSsid ?? "Disconnected!";
+    });
+  }
+
 
   Future<void> sendCommand(String command) async {
     if (channel != null) {
@@ -99,12 +128,27 @@ class _ModesState extends State<Modes> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Expanded(
-                      child: _buildTopCard1(
-                        child: Hero(
-                          tag: 'logo',
-                          child: SizedBox(
-                            height: 50,
-                            child: Image.asset('images/logo.png'),
+                      child: Card(
+                        color: Colors.black54,
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6.0),
+                          child: IconButton(
+                            icon: Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.rotationY(3.14159),
+                              // Flips the icon horizontally
+                              child: const Icon(
+                                Icons.logout,
+                                color: Colors.yellow,
+                              ),
+                            ),
+                            onPressed: () {
+                              _showConfirmationDialog1(context);
+                            },
                           ),
                         ),
                       ),
@@ -127,32 +171,27 @@ class _ModesState extends State<Modes> {
                       ),
                     ),
                     Expanded(
-                      child: Card(
-                        color: Colors.black54,
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6.0),
-                          child: IconButton(
-                            icon:
-                                const Icon(Icons.logout, color: Colors.yellow),
-                            onPressed: () {
-                              _showConfirmationDialog1(context);
-                            },
+                      child: _buildTopCard1(
+                        child: Hero(
+                          tag: 'logo',
+                          child: SizedBox(
+                            height: 50,
+                            child: Image.asset('images/logo.png'),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
+                SizedBox(
+                  height: 5,
+                ),
                 Expanded(
                   child: ListView(
                     children: [
                       Column(
                         children: [
+                          // _buildConnectionStatusCard(),
                           DiagonalCard(
                             imagePath: 'images/manual.jpeg',
                             text: 'Manual Mode',
@@ -181,6 +220,24 @@ class _ModesState extends State<Modes> {
                             },
                             heroTag: 'line_follower',
                           ),
+                          DiagonalCard(
+                            imagePath: 'images/gesture.jpeg',
+                            text: 'Gesture Controlled',
+                            onTap: () {
+                              HapticFeedback.vibrate();
+                              Navigator.pushNamed(context, GestureEnabled.id);
+                            },
+                            heroTag: 'gesture_mode',
+                          ),
+                          DiagonalCard(
+                            imagePath: 'images/voice.jpeg',
+                            text: 'Ai Voice Mode',
+                            onTap: () {
+                              HapticFeedback.vibrate();
+                              Navigator.pushNamed(context, VoiceEnabled.id);
+                            },
+                            heroTag: 'voice_enable',
+                          ),
                         ],
                       ),
                     ],
@@ -193,6 +250,27 @@ class _ModesState extends State<Modes> {
       ),
     );
   }
+
+  // Widget _buildConnectionStatusCard() {
+  //   return Card(
+  //     color: Colors.black54,
+  //     elevation: 5,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(10.0),
+  //       child: Center(
+  //         child: Text(
+  //           ssid == "Disconnected!" ? "Disconnected!" : "Connected to $ssid",
+  //           style: GoogleFonts.lexend(
+  //             fontSize: 18.0,
+  //             fontWeight: FontWeight.bold,
+  //             color: Colors.white,
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTopCard({required Widget child}) {
     return Card(
